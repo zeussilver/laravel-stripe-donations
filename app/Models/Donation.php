@@ -15,6 +15,12 @@ class Donation extends Model
         'stripe_checkout_session_id', 'stripe_customer_id', 'stripe_subscription_id',
     ];
 
+    // Same as the column defaults: Eloquent doesn't read those back after an insert.
+    protected $attributes = [
+        'currency' => 'aud',
+        'status' => 'pending',
+    ];
+
     public function payments(): HasMany
     {
         return $this->hasMany(DonationPayment::class);

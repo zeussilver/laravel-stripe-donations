@@ -21,7 +21,8 @@ touch database/database.sqlite && php artisan migrate
 # add STRIPE_SECRET to .env, then in three terminals:
 php artisan serve
 php artisan queue:work
-stripe listen --forward-to localhost:8000/stripe/webhook   # copy the whsec_ into .env
+stripe listen --events checkout.session.completed,checkout.session.async_payment_succeeded,checkout.session.expired,invoice.paid,invoice.payment_failed,customer.subscription.deleted \
+  --forward-to localhost:8000/stripe/webhook   # copy the whsec_ into .env
 ```
 
 Pay with test card `4242 4242 4242 4242`, any future date and any CVC. Receipts are written to `storage/logs/laravel.log`.

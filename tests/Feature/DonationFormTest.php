@@ -26,7 +26,7 @@ class DonationFormTest extends TestCase
         $this->mock(StripeGateway::class, function (MockInterface $mock) {
             $mock->shouldReceive('createCheckoutSession')
                 ->once()
-                ->withArgs(fn (Donation $d) => $d->amount === 2550 && $d->isMonthly())
+                ->withArgs(fn (Donation $d) => $d->amount === 2550 && $d->isMonthly() && $d->currency === 'aud')
                 ->andReturn(Session::constructFrom([
                     'id' => 'cs_test_123',
                     'url' => 'https://checkout.stripe.com/c/pay/cs_test_123',
