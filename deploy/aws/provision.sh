@@ -1,8 +1,10 @@
 #!/bin/bash
 # Installs and deploys the app on Amazon Linux 2023. Runs as root at first boot (from the
 # CloudFormation user data) and again for every later deploy (through SSM Run Command).
+# Callers update the checkout first: pulling inside a running bash script can change it mid-run.
 set -euo pipefail
 
+export HOME=${HOME:-/root}   # cloud-init and SSM run without HOME, which Composer requires
 APP=/var/www/donate
 PARAMS=/donate   # SSM Parameter Store path holding app-url, stripe-secret and stripe-webhook-secret
 
@@ -21,8 +23,6 @@ if [ ! -x /usr/local/bin/composer ]; then
 fi
 
 # --- code ------------------------------------------------------------------------------
-git config --global --add safe.directory "$APP"
-git -C "$APP" pull --ff-only
 cd "$APP"
 COMPOSER_ALLOW_SUPERUSER=1 composer install --no-dev --optimize-autoloader --no-interaction --no-progress
 
