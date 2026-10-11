@@ -2,6 +2,8 @@
 
 A small donation page for a not-for-profit: one-off or monthly gifts, paid through Stripe Checkout (test mode), with payment status driven by Stripe webhooks and an emailed receipt for every successful charge.
 
+**Live demo:** https://dl45ye3zyfeko.cloudfront.net, running on AWS in Stripe test mode. No real money moves: pay with `4242 4242 4242 4242`, any future date and any CVC.
+
 ## How it works
 
 1. The donor picks **Give once** or **Monthly** and an amount. Laravel validates the form and saves a `pending` donation.
@@ -33,4 +35,36 @@ Pay with test card `4242 4242 4242 4242`, any future date and any CVC. Receipts 
 php artisan test
 ```
 
-Feature tests cover form validation, the Stripe Checkout request for each frequency, signature rejection, one-off and monthly receipts, duplicate-event idempotency, cancellation and expiry. Stripe is faked in tests; webhook payloads are signed the same way Stripe signs them.
+Feature tests cover form validation, rate limiting, the Stripe Checkout request for each frequency, signature rejection, one-off and monthly receipts, duplicate-event idempotency, cancellation and expiry. Stripe is faked in tests; webhook payloads are signed the same way Stripe signs them.
+
+Both flows were also run end to end against Stripe's sandbox, locally and on the live site: a one-off gift, a monthly gift, a redelivered event and a cancellation. Those runs caught two bugs the faked tests could not: a donation sent to Stripe without its default currency, and production logging that dropped every receipt.
+
+## Deploy to AWS
+
+[`deploy/aws/template.yml`](deploy/aws/template.yml) is a CloudFormation stack in `ap-southeast-2`:
+
+- **EC2** (`t4g.micro`, Amazon Linux 2023) runs nginx, PHP-FPM and the queue worker as a systemd service.
+- **CloudFront** in front provides HTTPS. The instance's security group accepts HTTP only from CloudFront's origin-facing prefix list, and there is no SSH: administration goes through SSM Run Command.
+- **Secrets** live in SSM Parameter Store under `/donate/` (SecureString). The instance's IAM role can read only that path.
+- [`deploy/aws/provision.sh`](deploy/aws/provision.sh) installs packages on first boot, writes `.env` from Parameter Store and migrates. Run it again to deploy.
+- Receipts go to the log, so a public demo never emails an address a visitor typed in. `POST /donate` is limited to 10 submissions a minute per visitor.
+
+```bash
+export AWS_REGION=ap-southeast-2
+aws ssm put-parameter --name /donate/stripe-secret --type SecureString --value sk_test_...
+PL=$(aws ec2 describe-managed-prefix-lists --filters Name=prefix-list-name,Values=com.amazonaws.global.cloudfront.origin-facing --query 'PrefixLists[0].PrefixListId' --output text)
+aws cloudformation deploy --stack-name donate-demo --template-file deploy/aws/template.yml \
+  --capabilities CAPABILITY_IAM --parameter-overrides CloudFrontPrefixListId=$PL
+aws cloudformation describe-stacks --stack-name donate-demo --query 'Stacks[0].Outputs'   # SiteUrl, InstanceId
+```
+
+Then store the site URL, create a Stripe webhook endpoint for `<SiteUrl>/stripe/webhook` with the six events above, store its signing secret, and redeploy:
+
+```bash
+aws ssm put-parameter --name /donate/app-url --type String --value https://xxxx.cloudfront.net
+aws ssm put-parameter --name /donate/stripe-webhook-secret --type SecureString --value whsec_...
+aws ssm send-command --instance-ids <InstanceId> --document-name AWS-RunShellScript \
+  --parameters 'commands=["git -C /var/www/donate pull --ff-only","bash /var/www/donate/deploy/aws/provision.sh"]'
+```
+
+`aws cloudformation delete-stack --stack-name donate-demo` removes everything except the parameters.
