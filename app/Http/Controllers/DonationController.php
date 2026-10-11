@@ -13,7 +13,10 @@ class DonationController extends Controller
 {
     public function create(): View
     {
-        return view('donations.create', ['presets' => [10, 25, 50, 100]]);
+        return view('donations.create', [
+            'presets' => [10, 25, 50, 100],
+            'testMode' => str_starts_with((string) config('services.stripe.secret'), 'sk_test_'),
+        ]);
     }
 
     public function store(Request $request, StripeGateway $stripe): RedirectResponse

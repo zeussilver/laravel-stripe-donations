@@ -8,6 +8,13 @@
         <h1 class="h3 mb-1">Support our work</h1>
         <p class="text-muted mb-4">Every gift helps. Payments are processed securely by Stripe.</p>
 
+        @if ($testMode)
+            <div class="alert alert-warning small">
+                <strong>Demo in Stripe test mode:</strong> no real money moves. Pay with card
+                <code>4242 4242 4242 4242</code>, any future date and any CVC. Please don't enter a real card.
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('donations.store') }}" novalidate>
             @csrf
 

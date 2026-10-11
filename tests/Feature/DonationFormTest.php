@@ -63,6 +63,17 @@ class DonationFormTest extends TestCase
         $this->assertDatabaseCount('donations', 0);
     }
 
+    public function test_a_visitor_can_submit_at_most_ten_times_a_minute(): void
+    {
+        $this->mock(StripeGateway::class)->shouldNotReceive('createCheckoutSession');
+
+        for ($i = 0; $i < 10; $i++) {
+            $this->post('/donate', [])->assertSessionHasErrors();
+        }
+
+        $this->post('/donate', [])->assertStatus(429);
+    }
+
     public function test_one_off_checkout_uses_payment_mode(): void
     {
         $params = app(StripeGateway::class)->checkoutParams(

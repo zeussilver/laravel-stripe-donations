@@ -14,6 +14,10 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         // Stripe cannot send a CSRF token; the webhook is protected by its signature instead.
         $middleware->validateCsrfTokens(except: ['stripe/webhook']);
+
+        // On AWS the server only accepts traffic from CloudFront (see deploy/aws), so the last
+        // X-Forwarded-For hop is the real visitor. Rate limits need that IP, not CloudFront's.
+        $middleware->trustProxies(at: '*');
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
