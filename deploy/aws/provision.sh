@@ -47,7 +47,7 @@ APP_DEBUG=false
 APP_URL=$(param app-url)
 
 LOG_CHANNEL=single
-LOG_LEVEL=info
+LOG_LEVEL=debug   # the log mailer writes receipts at debug level; info would silently drop them
 
 DB_CONNECTION=sqlite
 SESSION_DRIVER=database
